@@ -1,0 +1,24 @@
+# For any query, contact rchahal@tntech.edu
+
+units           metal
+boundary        p p p
+atom_style      atomic
+
+neighbor        2.0 bin
+neigh_modify    every 10 delay 0 check no
+
+read_data	10PAN_structure.data.txt # convert into lammps data file from given xyz file
+
+pair_style	deepmd PAN_rNNIP_gen7.pb
+pair_coeff  * *	
+
+#minimize        0.0 1.0e-8 1000 100000
+#velocity        all create 300.0 23456789
+
+fix             1 all nvt temp 300.0 300.0 10.0
+timestep        0.0001
+thermo_style    custom step pe ke etotal temp press vol
+thermo          100
+dump		1 all custom 100 10mer-cyc_300K.dump id type x y z vx vy vz
+
+run             8000000
