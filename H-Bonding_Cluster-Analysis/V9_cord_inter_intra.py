@@ -38,6 +38,7 @@ CLUSTER_PALETTE_3D = [
     'steelblue','mediumorchid',
 ]
 
+# used for covalent bond detection to identify which atoms are covalently bonded together to form polymer chains/backbones not considered for molten salts
 PAIR_CUTOFFS = {
     frozenset(['Be','F']): 2.10, frozenset(['F','Li']): 2.10,
     frozenset(['Cs','F']): 0.00, frozenset(['Be', 'Be']): 0.00,
@@ -897,9 +898,6 @@ def plot_corner_edge_angle_distribution(all_angles_list, be_atom, f_atom,
     ax.fill_between(bin_centers, counts, alpha=0.18, color='steelblue')
 
     ymax = counts.max()
-    n_edge_plot   = int(np.sum((all_angles >= EDGE_LO)   & (all_angles <= EDGE_HI)))
-    n_corner_plot = int(np.sum((all_angles >= CORNER_LO) & (all_angles <= CORNER_HI)))
-    n_mid_plot    = len(all_angles) - n_edge_plot - n_corner_plot
 
     # ── Edge-sharing region (data-derived) ──
     ax.axvspan(EDGE_LO, EDGE_HI, alpha=0.13, color='red')
@@ -909,9 +907,8 @@ def plot_corner_edge_angle_distribution(all_angles_list, be_atom, f_atom,
     ax.annotate('', xy=(EDGE_HI, ymax*0.88), xytext=(EDGE_LO, ymax*0.88),
                 arrowprops=dict(arrowstyle='<->', color='red', lw=1.8))
     ax.text((EDGE_LO+EDGE_HI)/2, ymax*0.91,
-            f"Edge-sharing\n{EDGE_LO:.1f}\u00b0\u2013{EDGE_HI:.1f}\u00b0 \n"
-            f"median {EDGE_MED:.1f}\u00b0  |  2 shared F\n"
-            f"population: {n_edge_plot/len(all_angles)*100:.1f}% \u00b1 {n_mid_plot/len(all_angles)*100/2:.1f}%",
+            f"Edge-sharing\n{EDGE_LO:.1f}\u00b0\u2013{EDGE_HI:.1f}\u00b0  (95% range)\n"
+            f"median {EDGE_MED:.1f}\u00b0  |  2 shared F",
             ha='center', va='bottom', fontsize=8, color='darkred', fontweight='bold',
             bbox=dict(boxstyle='round,pad=0.3', facecolor='mistyrose',
                       edgecolor='red', alpha=0.90))
@@ -923,28 +920,18 @@ def plot_corner_edge_angle_distribution(all_angles_list, be_atom, f_atom,
     ax.annotate('', xy=(min(CORNER_HI-1, 179), ymax*0.88), xytext=(CORNER_LO, ymax*0.88),
                 arrowprops=dict(arrowstyle='<->', color='green', lw=1.8))
     ax.text((CORNER_LO+CORNER_HI)/2, ymax*0.91,
-            f"Corner-sharing\n{CORNER_LO:.1f}\u00b0\u2013{CORNER_HI:.1f}\u00b0 \n"
-            f"median {CORNER_MED:.1f}\u00b0  |  1 shared F\n"
-            f"population: {n_corner_plot/len(all_angles)*100:.1f}% \u00b1 {n_mid_plot/len(all_angles)*100/2:.1f}%",
+            f"Corner-sharing\n{CORNER_LO:.1f}\u00b0\u2013{CORNER_HI:.1f}\u00b0  (95% range)\n"
+            f"median {CORNER_MED:.1f}\u00b0  |  1 shared F",
             ha='center', va='bottom', fontsize=8, color='darkgreen', fontweight='bold',
             bbox=dict(boxstyle='round,pad=0.3', facecolor='honeydew',
                       edgecolor='green', alpha=0.90))
-
-    # ── Intermediate gap label ──
-    mid_x = (EDGE_HI + CORNER_LO) / 2
-    ax.text(mid_x, ymax*0.30,
-            f"Intermediate\n{EDGE_HI:.1f}\u00b0\u2013{CORNER_LO:.1f}\u00b0\n"
-            f"(error: {n_mid_plot/len(all_angles)*100:.1f}%)",
-            ha='center', va='center', fontsize=8, color='gray',
-            bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                      edgecolor='gray', alpha=0.75))
 
     ax.set_xlabel(f"{be_atom}-{f_atom}-{be_atom} Angle (degrees)",
                   fontsize=12, fontweight='bold')
     ax.set_ylabel("Count", fontsize=12, fontweight='bold')
     ax.set_title(f"{be_atom}-{f_atom}-{be_atom} Angle Distribution  —  Corner vs Edge Sharing\n"
                  f"Cutoff: {cluster_cut} \u00c5  |  {n_frames} frames  |  {len(all_angles)} angles total  |  "
-                 f"Regions derived from data",
+                 f"Regions derived from data (5th\u201395th percentile)",
                  fontsize=11, fontweight='bold')
     ax.set_xlim(0, 180)
     ax.set_xticks(range(0, 181, 15))
@@ -952,9 +939,20 @@ def plot_corner_edge_angle_distribution(all_angles_list, be_atom, f_atom,
     ax.grid(True, alpha=0.25, linestyle='--')
 
     # ── Stats box ──
-    #n_edge_plot   = int(np.sum((all_angles >= EDGE_LO)   & (all_angles <= EDGE_HI)))
-    #n_corner_plot = int(np.sum((all_angles >= CORNER_LO) & (all_angles <= CORNER_HI)))
-    #n_mid_plot    = len(all_angles) - n_edge_plot - n_corner_plot
+    n_edge_plot   = int(np.sum((all_angles >= EDGE_LO)   & (all_angles <= EDGE_HI)))
+    n_corner_plot = int(np.sum((all_angles >= CORNER_LO) & (all_angles <= CORNER_HI)))
+    ax.text(0.98, 0.60,
+            f"Classification: shared F-atom count (geometry-first)\n"
+            f"Angle ranges: data-derived 5th\u201395th percentile\n\n"
+            f"Edge   {EDGE_LO:.1f}\u00b0\u2013{EDGE_HI:.1f}\u00b0 : "
+            f"{n_edge_plot:>7,}  ({n_edge_plot/len(all_angles)*100:.1f}%)\n"
+            f"Corner {CORNER_LO:.1f}\u00b0\u2013{CORNER_HI:.1f}\u00b0: "
+            f"{n_corner_plot:>7,}  ({n_corner_plot/len(all_angles)*100:.1f}%)\n"
+            f"Mean: {all_angles.mean():.1f}\u00b0   Std: {all_angles.std():.1f}\u00b0",
+            transform=ax.transAxes, fontsize=8.5, va='top', ha='right',
+            bbox=dict(boxstyle='round,pad=0.4', facecolor='lightyellow',
+                      edgecolor='black', alpha=0.92))
+
     plt.tight_layout()
     out = out_prefix + f"_{be_atom}{f_atom}{be_atom}_corner_edge_angle_dist.png"
     plt.savefig(out, dpi=300, bbox_inches='tight'); plt.close()
@@ -2455,13 +2453,13 @@ if __name__ == "__main__":
 # Example commands
 #
 # MODE 1: OVITO — distance only, (OVITO STYLE)
-# python V7_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode ovito --avg --max-backbone-chains 15
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode ovito --avg --max-backbone-chains 15
 #
 # MODE 2: GEOMETRIC — H···A distance + donor filter + your angle choice
-# python V7_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 130 --avg --max-backbone-chains 15
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 130 --avg --max-backbone-chains 15
 #
 # MODE 3: VMD — D···A distance + donor filter + angle fixed 150 deg 
-# python V7_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 3.5 --mode vmd --avg --max-backbone-chains 15
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 3.5 --mode vmd --avg --max-backbone-chains 15
 #
 # ── CLUSTER ONLY (molten salt Be-F)
 # NOTE: --cluster-cut is AUTOMATIC — it defaults to --cn-cut if not given.
@@ -2471,31 +2469,32 @@ if __name__ == "__main__":
 #       --cluster-cut  defaults to --cn-cut  automatically if not given.
 #       --cluster-atom is the only cluster argument you MUST provide (which atom to count per cluster).
 #       So the minimal cluster command is just: add --cluster and --cluster-atom to your normal command.
-# python V8_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-atom Be --prob-plot
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-atom Be --prob-plot
 #
 # ── CLUSTER + Be-F-Be ANGLE DISTRIBUTION (V8 NEW) ──
 # --aba-angle: plots Be-F-Be angle histogram, marks edge-sharing (~90 deg) and corner-sharing (>130 deg) peaks
-# python V8_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-atom Be --prob-plot --aba-angle
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-atom Be --prob-plot --aba-angle
 #
 # ── CLUSTER + CORNER/EDGE SHARING ANALYSIS (V8 NEW) ──
 # --corner-edge: counts corner-sharing (1 shared F) vs edge-sharing (2 shared F) BeF4 tetrahedra pairs
 #               writes summary txt, per-frame CSV, time series PNG, and interactive 3D HTML
-# python V8_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-atom Be --prob-plot --aba-angle --corner-edge
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-atom Be --prob-plot --aba-angle --corner-edge
 #
 # ── FULL MOLTEN SALT ANALYSIS (all features) ──
-# python V8_cord_inter_intra.py FlibeCsF_510C.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-atom Be --prob-plot --aba-angle --corner-edge
-# python V7_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F # calculate CN for BOTH Li-F and Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-pairs Be-F # but build clusters ONLY from Be-F bonds --cluster-cut 2.35 --cluster-atom Be --prob-plot # but build clusters ONLY from Be-F bonds 
-# python V7_cord_inter_intra.py FlibeCsF_510C_27x_train1_nvt_equi.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-pairs Be-F --cluster-cut 2.35 --cluster-atom Be --prob-plot 
+# python V9_cord_inter_intra.py FlibeCsF_510C.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-atom Be --prob-plot --aba-angle --corner-edge
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F # calculate CN for BOTH Li-F and Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-pairs Be-F # but build clusters ONLY from Be-F bonds --cluster-cut 2.35 --cluster-atom Be --prob-plot # but build clusters ONLY from Be-F bonds 
+# python V9_cord_inter_intra.py FlibeCsF_510C_27x_train1_nvt_equi.xyz 0 --stop 100 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-pairs Be-F --cluster-cut 2.35 --cluster-atom Be --prob-plot 
+# python V9_cord_inter_intra.py FlibeCsF_510C_27x_train1_nvt_equi.xyz 0 --bond-cut 1.8 --pairs Be-F --rmax 12.0 --nbins 300 --cn-cut 2.35 --mode ovito --avg --cluster --cluster-pairs Be-F --cluster-cut 2.35 --cluster-atom Be --prob-plot --aba-angle --corner-edge --out-prefix FlibeCsF_510C
 
 #
 # ── GEOMETRIC + CLUSTER (H-bond polymer + cluster) ──
 # NOTE: same rule — --cluster-cut is automatic, no need to repeat --cn-cut value.
-# python V7_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 130 --avg --backbone-chains 2 30 45 --cluster --cluster-pairs O-H --cluster-atom O --prob-plot
-# python V7_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 130 --avg --backbone-chains 2 30 45 --cluster --cluster-pairs Be-F --cluster-cut 2.35 --cluster-atom Be --prob-plot
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 130 --avg --backbone-chains 2 30 45 --cluster --cluster-pairs O-H --cluster-atom O --prob-plot
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 130 --avg --backbone-chains 2 30 45 --cluster --cluster-pairs Be-F --cluster-cut 2.35 --cluster-atom Be --prob-plot
 #
 # ── ANGLE DIAGNOSTIC: run first on 10 frames to choose --angle-cut (geometric mode only) ──
-# python V7_cord_inter_intra.py file.xyz 0 --stop 10 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 150 --angle-diag
+# python V9_cord_inter_intra.py file.xyz 0 --stop 10 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 150 --angle-diag
 # Then read *_angle_report.txt and *_angle_distribution.png to pick your cutoff.
 #
 # ── Specific backbone chains ──
-# python V7_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 130 --avg --backbone-chains 2 30 45
+# python V9_cord_inter_intra.py file.xyz 0 --stop 100 --bond-cut 1.8 --pairs O-H N-H --rmax 12.0 --nbins 300 --cn-cut 2.24 --mode geometric --angle-cut 130 --avg --backbone-chains 2 30 45
